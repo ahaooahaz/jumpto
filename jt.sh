@@ -83,28 +83,28 @@ function s() {
 
     if [ -z ${ip} ]; then
         echo -n "ip: "
-        read ip
+        read -r ip
     else
         echo "ip: ${ip}"
     fi
 
     if [ -z ${user} ]; then
         echo -n "user: "
-        read user
+        read -r user
     else
         echo "user: ${user}"
     fi
 
     if [ -z ${port} ]; then
         echo -n "port: "
-        read port
+        read -r port
     else
         echo "port: ${port}"
     fi
 
     if [ -z ${password} ]; then
         echo -n "password: "
-        read password
+        read -r password
     else
         echo "password: ${password}"
     fi
@@ -115,7 +115,7 @@ function s() {
             return
         fi
         echo -n "2FA tag: "
-        read fa2_tag
+        read -r fa2_tag
     else
         echo "2FA tag: ${fa2_tag}"
     fi
@@ -126,7 +126,7 @@ function s() {
             return
         fi
         echo -n "2FA secret: "
-        read fa2_secret
+        read -r fa2_secret
     else
         echo "2FA secret: ${fa2_secret}"
     fi
@@ -173,7 +173,7 @@ function e() {
         return
     fi
 
-    read user ip crypted port fa2_tag <<< $(echo ${detail} | awk -F ':' '{print $1,$2,$3,$4,$5}' 2>/dev/null)
+    read -r user ip crypted port fa2_tag <<< $(echo ${detail} | awk -F ':' '{print $1,$2,$3,$4,$5}' 2>/dev/null)
     password=$(base64 -d <<< ${crypted})
     if [ -z ${fa2_tag} ]; then
         exec sshpass -p ${password} ssh ${user}@${ip} -p ${port} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
@@ -199,7 +199,7 @@ function e() {
 }
 
 function l() {
-    while read line
+    while read -r line
     do
         info $(echo ${line} | awk -F ':' '{print $2}')
     done < ${details}
