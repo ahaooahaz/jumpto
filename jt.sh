@@ -174,11 +174,16 @@ function e() {
     fi
 
     read -r user ip crypted port fa2_tag <<< $(echo ${detail} | awk -F ':' '{print $1,$2,$3,$4,$5}' 2>/dev/null)
+    info "match: ${user}@${ip}"
+    sleep 0.5
     password=$(base64 -d <<< ${crypted})
     if [ -z ${fa2_tag} ]; then
         exec sshpass -p ${password} ssh ${user}@${ip} -p ${port} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
     else
-        fa2_auth=$(gauth | grep ${fa2_tag} 2>/dev/null | awk -F ' ' '{print $2}')
+        fa2_auth=$(gauth 2>/dev/null | grep ${fa2_tag} 2>/dev/null | awk -F ' ' '{print $2}')
+        if [ "${fa2_auth}" == "" ]; then
+            warn "2FA secret not found, you need input manual"
+        fi
         expect -c "
             log_user 0
             set timeout 60
@@ -201,7 +206,8 @@ function e() {
 function l() {
     while read -r line
     do
-        info $(echo ${line} | awk -F ':' '{print $2}')
+        read -r user ip crypted port fa2_tag <<< $(echo ${line} | awk -F ':' '{print $1,$2,$3,$4,$5}' 2>/dev/null)
+        info "${user}@${ip} ${fa2_tag}"
     done < ${details}
 }
 
