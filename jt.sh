@@ -2,7 +2,6 @@
 
 # set -x
 
-old_details=${HOME}/.config/jt.csv
 details=${HOME}/.config/jt/jt.csv
 gauth_config=${HOME}/.config/gauth.csv
 
@@ -211,13 +210,6 @@ function l() {
     done < ${details}
 }
 
-function upgrade() {
-    # move config.
-    if [ -f ${old_details} ]; then
-        mv ${old_details} ${details}
-    fi
-}
-
 # $1: tag $2: secret
 function fa2() {
     tag=$1
@@ -235,7 +227,6 @@ function fa2() {
 }
 
 function main() {
-    upgrade
     if [ $# -eq 0 ]; then
         usage
         exit 0
