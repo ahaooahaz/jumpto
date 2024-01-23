@@ -166,17 +166,31 @@ function e() {
         usage
         return
     fi
-    detail=$(tac ${details} 2>/dev/null | grep -E "^[^:]*{1}:[^:]*${1}{1}:[^:]*{1}:[0-9]{1,5}{1}.*$" 2>/dev/null)
-    if [ "${detail}" == "" ]; then
+    details=($(tac ${details} 2>/dev/null | grep -E "^[^:]*{1}:[^:]*${1}.*{1}:[^:]*{1}:[0-9]{1,5}{1}.*$" 2>/dev/null))
+    if [ ${#details[@]} -eq 0 ]; then
         warn "${1} not match"
         return
+    elif [ ${#details[@]} -eq 1 ]; then
+        detail=${details[0]}
+    else
+        for ((i=0;i<${#details[@]};i++)); do
+            echo "${i}: ${details[i]}"
+        done
+        echo -ne "\033[32mmatch multi targets, please input which you want: \033[0m"
+        read -r chosen
+        if [[ "$chosen" =~ ^[0-9]+$ ]] && [ "$chosen" -lt "${#details[@]}" ]; then
+            detail=${details[chosen]}
+        else
+            warn "invalid index, defaulting to 0"
+            detail=${details[0]}
+        fi
     fi
 
     read -r user ip crypted port fa2_tag <<< $(echo ${detail} | awk -F ':' '{print $1,$2,$3,$4,$5}' 2>/dev/null)
     info "match: ${user}@${ip}"
     sleep 0.5
     password=$(base64 -d <<< ${crypted})
-    if [ -z ${fa2_tag} ]; then
+    if [ -z "${fa2_tag}" ]; then
         exec sshpass -p ${password} ssh ${user}@${ip} -p ${port} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
     else
         fa2_auth=$(gauth 2>/dev/null | grep ${fa2_tag} 2>/dev/null | awk -F ' ' '{print $2}')
