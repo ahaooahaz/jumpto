@@ -166,23 +166,23 @@ function e() {
         usage
         return
     fi
-    details=($(tac ${details} 2>/dev/null | grep -E "^[^:]*{1}:[^:]*${1}.*{1}:[^:]*{1}:[0-9]{1,5}{1}.*$" 2>/dev/null))
-    if [ ${#details[@]} -eq 0 ]; then
+    matched_targets=($(tac ${details} 2>/dev/null | grep -E "^[^:]*{1}:[^:]*${1}.*{1}:[^:]*{1}:[0-9]{1,5}{1}.*$" 2>/dev/null))
+    if [ ${#matched_targets[@]} -eq 0 ]; then
         warn "${1} not match"
         return
-    elif [ ${#details[@]} -eq 1 ]; then
+    elif [ ${#matched_targets[@]} -eq 1 ]; then
         detail=${details[0]}
     else
-        for ((i=0;i<${#details[@]};i++)); do
-            echo "${i}: ${details[i]}"
+        for ((i=0;i<${#matched_targets[@]};i++)); do
+            echo "${i}: ${matched_targets[i]}"
         done
         echo -ne "\033[32mmatch multi targets, please input which you want: \033[0m"
         read -r chosen
-        if [[ "$chosen" =~ ^[0-9]+$ ]] && [ "$chosen" -lt "${#details[@]}" ]; then
-            detail=${details[chosen]}
+        if [[ "$chosen" =~ ^[0-9]+$ ]] && [ "$chosen" -lt "${#matched_targets[@]}" ]; then
+            detail=${matched_targets[chosen]}
         else
             warn "invalid index, defaulting to 0"
-            detail=${details[0]}
+            detail=${matched_targets[0]}
         fi
     fi
 
