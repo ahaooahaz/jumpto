@@ -166,12 +166,17 @@ function e() {
         usage
         return
     fi
-    matched_targets=($(tac ${details} 2>/dev/null | grep -E "^[^:]*{1}:[^:]*${1}.*{1}:[^:]*{1}:[0-9]{1,5}{1}.*$" 2>/dev/null))
+    #matched_targets=($(tac ${details} 2>/dev/null | grep -E "^[^:]*{1}:[^:]*${1}.*{1}:[^:]*{1}:[0-9]{1,5}{1}.*$" 2>/dev/null))
+    while read -r target; do
+        matched_targets+=("${target}")
+    done < <(grep -E "^[^:]*{1}:[^:]*${1}.*{1}:[^:]*{1}:[0-9]{1,5}{1}.*$" ${details} 2>/dev/null)
+    #declare -p matched_targets
+
     if [ ${#matched_targets[@]} -eq 0 ]; then
         warn "${1} not match"
         return
     elif [ ${#matched_targets[@]} -eq 1 ]; then
-        detail=${details[0]}
+        detail=${matched_targets[0]}
     else
         for ((i=0;i<${#matched_targets[@]};i++)); do
             echo "${i}: ${matched_targets[i]}"
