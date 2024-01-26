@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -x
+#set -x
 
 details=${HOME}/.config/jt/jt.csv
 gauth_config=${HOME}/.config/gauth.csv
