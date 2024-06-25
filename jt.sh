@@ -12,16 +12,11 @@ FA2_PASSED_AUTH_MARK=">"
 function usage() {
 cat << USAGE
 usage: jt [OPTION] [PARAMS]
-        e    jump to remote machine with ssh, default option
-        s    save remote machine details
-            -i|--ip         remote ip
-            -u|--user       remote user
-            -p|--password   remote password
-            -P|--port       remote sshd service binding port
-            --2FA           2FA enable
-        l    show exist detail ips
 
-        -h|--help   show help
+        [address]        jump to remote machine with ssh.
+        -r|--register    register machine login information.   
+        -l|--list        show address list.
+        -h|--help        show help.
 USAGE
 }
 
@@ -38,70 +33,28 @@ function info() {
 }
 
 function s() {
+    ip=""
+    user=""
+    password=""
+    port=""
     fa2_enable=0
-    while [ $# -ne 0 ]
-    do
-        key=$1
-        case ${key} in
-            -i|--ip)
-                ip=$2
-                shift
-                shift
-                ;;
-            -u|--user)
-                user=$2
-                shift
-                shift
-                ;;
-            -p|--password)
-                password=$2
-                shift
-                shift
-                ;;
-            -P|--port)
-                port=$2
-                shift
-                shift
-                ;;
-            --2FA)
-                fa2_enable=1
-                shift
-                ;;
-            *)
-                alert "invalid param: ${key}"
-                usage
-                return 1
-        esac
-    done
-
-    if [ -z ${ip} ]; then
-        echo -n "ip: "
-        read -r ip
-    else
-        echo "ip: ${ip}"
+    echo -n "please input register ip: "  
+    if ! read -r ip ; then
+        echo ""
+    fi
+    echo -n "please input register user: "
+    if ! read -r user ; then
+        echo ""
+    fi
+    echo -n "please input register password: "
+    if ! read -r password ; then
+        echo ""
+    fi
+    echo -n "please input register sshd service port: "
+    if ! read -r port ; then
+        echo ""
     fi
 
-    if [ -z ${user} ]; then
-        echo -n "user: "
-        read -r user
-    else
-        echo "user: ${user}"
-    fi
-
-    if [ -z ${port} ]; then
-        echo -n "port: "
-        read -r port
-    else
-        echo "port: ${port}"
-    fi
-
-    if [ -z ${password} ]; then
-        echo -n "password: "
-        read -r password
-    else
-        echo "password: ${password}"
-    fi
-    
     if [ ${fa2_enable} -ne 0 ]; then
         if [ -z ${fa2_tag} ]; then
             if [ $(type gauth >/dev/null 2>&1; echo $?) -ne 0 ]; then
@@ -109,7 +62,9 @@ function s() {
                 return
             fi
             echo -n "2FA tag: "
-            read -r fa2_tag
+            if ! read -r fa2_tag; then
+                echo ""
+            fi
         else
             echo "2FA tag: ${fa2_tag}"
         fi
@@ -120,7 +75,9 @@ function s() {
                 return
             fi
             echo -n "2FA secret(ignore when 2FA tag already in gauth): "
-            read -r fa2_secret
+            if ! read -r fa2_secret; then
+                echo ""
+            fi
         else
             echo "2FA secret: ${fa2_secret}"
         fi
@@ -153,13 +110,13 @@ function s() {
 
 function e() {
     if [ -z "$1" ]; then
-        alert "you need input remote machine ip suffix"
+        alert "input remote machine address or part of address"
         usage
         return
     fi
     
     if [ ! -f "${details}" ]; then
-        alert "you need save remote machine details first, use 'jt s'"
+        alert "save remote machine details first, use 'jt s'"
         usage
         return
     fi
@@ -177,8 +134,10 @@ function e() {
         for ((i=0;i<${#matched_targets[@]};i++)); do
             echo "${i}: ${matched_targets[i]}"
         done
-        echo -ne "\033[32mmatch multi targets, please input which you want: \033[0m"
-        read -r chosen
+        echo -ne "\033[32mmatch multi targets, please input address index: \033[0m"
+        if ! read -r chosen; then
+            echo ""
+        fi
         if [[ "$chosen" =~ ^[0-9]+$ ]] && [ "$chosen" -lt "${#matched_targets[@]}" ]; then
             detail=${matched_targets[chosen]}
         else
@@ -192,7 +151,13 @@ function e() {
     sleep 0.5
     password=$(base64 -d <<< ${crypted})
     if [ -z "${fa2_tag}" ]; then
-        exec sshpass -p ${password} ssh ${user}@${ip} -p ${port} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+        timeout 5s sshpass -p ${password} ssh ${user}@${ip} -p ${port} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+        err_code=$?
+        if [ ${err_code} -ne 0 ]; then
+            alert "${ip} login timeout"
+            exit ${err_code}
+        fi
+        exit 0
     else
         fa2_auth=$(gauth 2>/dev/null | grep -E "^${fa2_tag} .*" 2>/dev/null | awk -F ' ' '{print $2}')
         if [ "${fa2_auth}" == "" ]; then
@@ -242,28 +207,33 @@ function fa2() {
 }
 
 function main() {
-    if [ $# -eq 0 ]; then
-        usage
-        exit 0
-    fi
+    ARGS=`getopt -o rlh -l help,list,register -- "$@"`
+    eval set -- "$ARGS"
+    
+    while true ; do
+        case "$1" in
+            -h|--help)
+                usage
+                exit 0
+                ;;
+            -r|--register)
+                shift
+                s $@
+                break
+                ;;
+            -l|--list)
+                l
+                shift
+                break
+                ;;
+            *)
+                shift
+                e $1
+                break
+                ;;
+        esac
+    done
 
-    case $1 in
-        e)
-            $@
-            ;;
-        s)
-            $@
-            ;;
-        l)
-            l
-            ;;
-        -h|--help)
-            usage
-            ;;
-        *)
-            e $@
-    esac
 }
-
 
 main $@
