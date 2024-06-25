@@ -178,8 +178,6 @@ function e() {
         "
     exit 0
     fi
-
-    alert "not match details. insert remote machine into ${details}"
 }
 
 function l() {
@@ -207,7 +205,7 @@ function fa2() {
 }
 
 function main() {
-    ARGS=`getopt -o rlh -l help,list,register -- "$@"`
+    ARGS=$(getopt -o rlh -l help,list,register -- "$@")
     eval set -- "$ARGS"
     
     while true ; do
