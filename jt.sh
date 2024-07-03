@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# set -x
+set -e
 
 details=${HOME}/.config/jt/jt.csv
 
