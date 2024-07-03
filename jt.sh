@@ -130,7 +130,7 @@ function login() {
         detail=${matched_targets[0]}
     else
         for ((i=0;i<${#matched_targets[@]};i++)); do
-            read -r tuser tip tcrypted tport tfa2_tag <<< $(echo ${matched_targets[i]} | awk -F ':' '{print $1,$2,$3,$4,$5}' 2>/dev/null)
+            read -r tuser tip tcrypted _ tfa2_tag <<< $(echo ${matched_targets[i]} | awk -F ':' '{print $1,$2,$3,$4,$5}' 2>/dev/null)
             password=$(base64 -d <<< ${tcrypted} 2>/dev/null)
             info "* ${i}: ${tuser}@${tip}(${password}) 2FA: ${tfa2_tag}"
         done
@@ -186,7 +186,7 @@ function list() {
     do
         read -r user ip crypted port fa2_tag <<< $(echo ${line} | awk -F ':' '{print $1,$2,$3,$4,$5}' 2>/dev/null)
         info "* ${index}: ${user}@${ip} ${fa2_tag}"
-        let index+=1
+        ((index+=1))
     done < ${details}
 }
 
@@ -207,7 +207,7 @@ function fa2() {
 }
 
 function delete() {
-    index=$(expr $1 + 1)
+    index=$(($1 + 1))
     sed -i "${index}d" ${details}
 }
 
