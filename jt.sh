@@ -1,13 +1,13 @@
 #!/bin/bash
 
-#set -x
+# set -x
 
 details=${HOME}/.config/jt/jt.csv
-gauth_config=${HOME}/.config/gauth.csv
 
 # custom marks
-FA2_INPUT_AUTH_MARK="FA auth]:"
-FA2_PASSED_AUTH_MARK=">"
+FA2_IN_AUTH_MARK=".*FA auth]:"
+FA2_PASS_MARK=".*>"
+FA2_IN_PASS_MARK=".*(p|P)assword:"
 
 function usage() {
 cat << USAGE
@@ -39,7 +39,10 @@ function register() {
     user=""
     password=""
     port=""
-    fa2_enable=0
+    fa2_secret=0
+    fa2_in_password_mark_e=""
+    fa2_in_auth_mark_e=""
+    fa2_pass_mark_e=""
     echo -n "please input register ip: "  
     if ! read -r ip ; then
         echo ""
@@ -56,36 +59,45 @@ function register() {
     if ! read -r port ; then
         echo ""
     fi
-
-    if [ ${fa2_enable} -ne 0 ]; then
-        if [ -z ${fa2_tag} ]; then
-            if [ $(type gauth >/dev/null 2>&1; echo $?) -ne 0 ]; then
-                alert "2FA install gauth first"
-                return
-            fi
-            echo -n "2FA tag: "
-            if ! read -r fa2_tag; then
-                echo ""
-            fi
-        else
-            echo "2FA tag: ${fa2_tag}"
-        fi
-
-        if [ -z ${fa2_secret} ]; then
-            if [ $(type gauth >/dev/null 2>&1; echo $?) -ne 0 ]; then
-                alert "2FA install gauth first"
-                return
-            fi
-            echo -n "2FA secret(ignore when 2FA tag already in gauth): "
-            if ! read -r fa2_secret; then
-                echo ""
-            fi
-        else
-            echo "2FA secret: ${fa2_secret}"
-        fi
+    echo -n "please input register 2fa secret, empty for no 2fa: "
+    if ! read -r fa2_secret ; then
+        echo ""
     fi
 
-    if [ ${fa2_enable} -eq 0 ]; then
+
+    if [ ! -z ${fa2_secret} ]; then
+        if [ $(pip show pyotp > /dev/null 2>&1; echo $?) -ne 0 ]; then
+            alert "2fa require pyotp, use: pip install pyotp"
+            return
+        fi
+
+        echo -n "please input 2fa input password mark(default: '${FA2_IN_PASS_MARK}'): "
+        if ! read -r fa2_in_password_mark ; then
+            echo ""
+        fi
+        if [ -z ${fa2_in_password_mark} ]; then
+            fa2_in_password_mark=${FA2_IN_PASS_MARK}
+        fi
+        fa2_in_password_mark_e=$(base64 <<< ${fa2_in_password_mark})
+
+        echo -n "please input 2fa input verification code mark(default: '${FA2_IN_AUTH_MARK}'): "
+        if ! read -r fa2_in_auth_mark ; then
+            echo ""
+        fi
+        if [ -z ${fa2_in_auth_mark} ]; then
+            fa2_in_auth_mark=${FA2_IN_AUTH_MARK}
+        fi
+        fa2_in_auth_mark_e=$(base64 <<< ${fa2_in_auth_mark})
+
+        echo -n "please input 2fa pass mark(default: '${FA2_PASS_MARK}'): "
+        if ! read -r fa2_pass_mark ; then
+            echo ""
+        fi
+        if [ -z ${fa2_pass_mark} ]; then
+            fa2_pass_mark=${FA2_PASS_MARK}
+        fi
+        fa2_pass_mark_e=$(base64 <<< ${fa2_pass_mark})
+    else
         if [ $(timeout 5s sshpass -p ${password} ssh ${user}@${ip} -p ${port} -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null 'exit' 2>/dev/null 1>&2; echo $?) -ne 0 ]; then
             alert "ssh check remote machine failed"
             return
@@ -97,13 +109,8 @@ function register() {
     fi
 
     crypted=$(base64 <<< ${password})
-    echo "${user}:${ip}:${crypted}:${port}:${fa2_tag}" >> ${details}
-    if [ ${fa2_enable} -ne 0 ]; then
-        if [ ! -z "${fa2_tag}" ]; then
-            fa2 ${fa2_tag} ${fa2_secret}
-        fi
-    fi
-    info "OK"
+    echo "${user}:${ip}:${crypted}:${port}:${fa2_secret}:${fa2_in_password_mark_e}:${fa2_in_auth_mark_e}:${fa2_pass_mark_e}" >> ${details}
+    info "OK!"
 }
 
 function login() {
@@ -130,9 +137,9 @@ function login() {
         detail=${matched_targets[0]}
     else
         for ((i=0;i<${#matched_targets[@]};i++)); do
-            read -r tuser tip tcrypted _ tfa2_tag <<< $(echo ${matched_targets[i]} | awk -F ':' '{print $1,$2,$3,$4,$5}' 2>/dev/null)
+            read -r tuser tip tcrypted _ tfa2_secret <<< $(echo ${matched_targets[i]} | awk -F ':' '{print $1,$2,$3,$4,$5}' 2>/dev/null)
             password=$(base64 -d <<< ${tcrypted} 2>/dev/null)
-            info "* ${i}: ${tuser}@${tip}(${password}) 2FA: ${tfa2_tag}"
+            info "* ${i}: ${tuser}@${tip}(${password}) 2FA: ${tfa2_secret}"
         done
         echo -ne "\033[32mmatch multi targets, please input address index: \033[0m"
         if ! read -r chosen; then
@@ -146,11 +153,11 @@ function login() {
         fi
     fi
 
-    read -r user ip crypted port fa2_tag <<< $(echo ${detail} | awk -F ':' '{print $1,$2,$3,$4,$5}' 2>/dev/null)
+    read -r user ip crypted port fa2_secret fa2_in_password_mark_e fa2_in_auth_mark_e fa2_pass_mark_e <<< $(echo ${detail} | awk -F ':' '{print $1,$2,$3,$4,$5,$6,$7,$8}' 2>/dev/null)
     info "match: ${user}@${ip}"
     sleep 0.5
     password=$(base64 -d <<< ${crypted})
-    if [ -z "${fa2_tag}" ]; then
+    if [ -z "${fa2_secret}" ]; then
         sshpass -p ${password} ssh ${user}@${ip} -p ${port} -o ConnectTimeout=5 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
         err_code=$?
         if [ ${err_code} -ne 0 ]; then
@@ -159,7 +166,7 @@ function login() {
         fi
         exit 0
     else
-        fa2_auth=$(gauth 2>/dev/null | grep -E "^${fa2_tag} .*" 2>/dev/null | awk -F ' ' '{print $2}')
+        fa2_auth=$(fa2 ${fa2_secret})
         if [ "${fa2_auth}" == "" ]; then
             warn "2FA secret not found, you need input manual"
         fi
@@ -169,9 +176,9 @@ function login() {
             spawn ssh ${user}@${ip} -p ${port} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
             log_user 1
             expect {
-                -re \".*(p|P)assword:\" {send \"${password}\r\";exp_continue}
-                -re \".*${FA2_INPUT_AUTH_MARK}\" {send \"${fa2_auth}\r\"}
-                -re \".*${FA2_PASSED_AUTH_MARK}\" {}
+                -re \"$(base64 -d <<< ${fa2_in_password_mark_e})\" {send \"${password}\r\";exp_continue}
+                -re \"$(base64 -d <<< ${fa2_in_auth_mark_e})\" {send \"${fa2_auth}\r\"}
+                -re \"$(base64 -d <<< ${fa2_pass_mark_e})\" {}
             }
             set timeout -1
             interact
@@ -184,26 +191,22 @@ function list() {
     index=0
     while read -r line
     do
-        read -r user ip crypted port fa2_tag <<< $(echo ${line} | awk -F ':' '{print $1,$2,$3,$4,$5}' 2>/dev/null)
-        info "* ${index}: ${user}@${ip} ${fa2_tag}"
+        read -r user ip crypted port fa2_secret <<< $(echo ${line} | awk -F ':' '{print $1,$2,$3,$4,$5}' 2>/dev/null)
+        info "* ${index}: ${user}@${ip} ${fa2_secret}"
         ((index+=1))
     done < ${details}
 }
 
 # $1: tag $2: secret
 function fa2() {
-    tag=$1
-    secret=$2
-    if [ -z $tag ]; then
-        alert "2FA tag invalid"
-        return
-    fi
+    secret=$1
 
-    if [ $(grep -E "^${tag}:.*" ${gauth_config} >/dev/null 2>&1; echo $?) -eq 0 ]; then
-        return
-    fi
-
-    echo -en "\n$tag:$secret\n" >> ${gauth_config}
+    echo -en $(python3 - <<EOF
+import pyotp
+my_var = "$secret"
+print(pyotp.TOTP(my_var).now())
+EOF
+    )
 }
 
 function delete() {

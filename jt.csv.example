@@ -1,3 +1,1 @@
-# format: 
-# user:ip:base64(password):port:2fa_tag
-faker:127.0.0.1:123456:22:2fa_tag
+username:127.0.0.1:123456:22:2fa_secret

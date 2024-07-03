@@ -26,6 +26,6 @@ jump to remote machine by ssh and sshpass, suitable for scenarios where multiple
 
 ## 2FA
 
-To login a machine which requires two-factor authentication, reqire to install [gauth](https://github.com/pcarrier/gauth) first, then configure the verification information corresponding to the machine and set a special tag, finally use the corresponding tag while register remote matchine.
+2FA reqire to `pyotp`, use `pip install pyotp` to install.
 
 ### [MIT LICENSE](LICENSE)
