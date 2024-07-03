@@ -14,8 +14,10 @@ cat << USAGE
 usage: jt [OPTION] [PARAMS]
 
         [address]        jump to remote machine with ssh.
-        -r|--register    register machine login information.   
+        -r|--register    register machine login information.
         -l|--list        show address list.
+        -d|--delete      delete machine login information by index which from list.
+
         -h|--help        show help.
 USAGE
 }
@@ -32,7 +34,7 @@ function info() {
     echo -e "\033[32m$1\033[0m"
 }
 
-function s() {
+function register() {
     ip=""
     user=""
     password=""
@@ -83,10 +85,6 @@ function s() {
         fi
     fi
 
-    if [ ! -z "$(grep -E "^[^:]*{1}:${ip}:[^:]*{1}:[0-9]{1,5}{1}.*$" ${details} 2>/dev/null)" ]; then
-        warn "ip already exist"
-    fi
-    
     if [ ${fa2_enable} -eq 0 ]; then
         if [ $(timeout 5s sshpass -p ${password} ssh ${user}@${ip} -p ${port} -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null 'exit' 2>/dev/null 1>&2; echo $?) -ne 0 ]; then
             alert "ssh check remote machine failed"
@@ -108,7 +106,7 @@ function s() {
     info "OK"
 }
 
-function e() {
+function login() {
     if [ -z "$1" ]; then
         alert "input remote machine address or part of address"
         usage
@@ -132,7 +130,9 @@ function e() {
         detail=${matched_targets[0]}
     else
         for ((i=0;i<${#matched_targets[@]};i++)); do
-            echo "${i}: ${matched_targets[i]}"
+            read -r tuser tip tcrypted tport tfa2_tag <<< $(echo ${matched_targets[i]} | awk -F ':' '{print $1,$2,$3,$4,$5}' 2>/dev/null)
+            password=$(base64 -d <<< ${tcrypted} 2>/dev/null)
+            info "* ${i}: ${tuser}@${tip}(${password}) 2FA: ${tfa2_tag}"
         done
         echo -ne "\033[32mmatch multi targets, please input address index: \033[0m"
         if ! read -r chosen; then
@@ -151,7 +151,7 @@ function e() {
     sleep 0.5
     password=$(base64 -d <<< ${crypted})
     if [ -z "${fa2_tag}" ]; then
-        timeout 5s sshpass -p ${password} ssh ${user}@${ip} -p ${port} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+        sshpass -p ${password} ssh ${user}@${ip} -p ${port} -o ConnectTimeout=5 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
         err_code=$?
         if [ ${err_code} -ne 0 ]; then
             alert "${ip} login timeout"
@@ -180,11 +180,13 @@ function e() {
     fi
 }
 
-function l() {
+function list() {
+    index=0
     while read -r line
     do
         read -r user ip crypted port fa2_tag <<< $(echo ${line} | awk -F ':' '{print $1,$2,$3,$4,$5}' 2>/dev/null)
-        info "${user}@${ip} ${fa2_tag}"
+        info "* ${index}: ${user}@${ip} ${fa2_tag}"
+        let index+=1
     done < ${details}
 }
 
@@ -204,8 +206,13 @@ function fa2() {
     echo -en "\n$tag:$secret\n" >> ${gauth_config}
 }
 
+function delete() {
+    index=$(expr $1 + 1)
+    sed -i "${index}d" ${details}
+}
+
 function main() {
-    ARGS=$(getopt -o rlh -l help,list,register -- "$@")
+    ARGS=$(getopt -o rlhd: -l help,list,register,delete: -- "$@")
     eval set -- "$ARGS"
     
     while true ; do
@@ -216,22 +223,26 @@ function main() {
                 ;;
             -r|--register)
                 shift
-                s $@
+                register $@
                 break
                 ;;
             -l|--list)
-                l
+                list
                 shift
+                break
+                ;;
+            -d|--delete)
+                shift
+                delete $@
                 break
                 ;;
             *)
                 shift
-                e $1
+                login $1
                 break
                 ;;
         esac
     done
-
 }
 
 main $@
