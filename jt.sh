@@ -11,7 +11,8 @@ FA2_IN_PASS_MARK=".*(p|P)assword:"
 
 function usage() {
 cat << USAGE
-usage: jt [OPTION] [PARAMS]
+Usage: jt [OPTION] [PARAMS]
+Login different machines through IP or domain name and ssh.
 
         [address]        jump to remote machine with ssh.
         -r|--register    register machine login information.
