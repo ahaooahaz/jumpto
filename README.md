@@ -12,6 +12,8 @@ jump to remote machine by ssh and sshpass, suitable for scenarios where multiple
 
 ## Usage
 
+![example](/example.gif)
+
 ### Register
 
 `jt -r` or `jt --register` to register remote matchine information to `${HOME}/.config/jt/jt.csv`.
