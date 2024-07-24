@@ -138,9 +138,8 @@ function login() {
         detail=${matched_targets[0]}
     else
         for ((i=0;i<${#matched_targets[@]};i++)); do
-            read -r tuser tip tcrypted _ tfa2_secret <<< $(echo ${matched_targets[i]} | awk -F ':' '{print $1,$2,$3,$4,$5}' 2>/dev/null)
-            password=$(base64 -d <<< ${tcrypted} 2>/dev/null)
-            info "* ${i}: ${tuser}@${tip}(${password}) 2FA: ${tfa2_secret}"
+            read -r tuser tip <<< $(echo ${matched_targets[i]} | awk -F ':' '{print $1,$2}' 2>/dev/null)
+            info "* ${i}: ${tuser}@${tip}"
         done
         echo -ne "\033[32mmatch multi targets, please input address index: \033[0m"
         if ! read -r chosen; then
