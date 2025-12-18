@@ -1,0 +1,21 @@
+root = true
+
+[*]
+indent_size = 4
+indent_style = space
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+
+[*.{md,markdown}]
+max_line_length = 80
+
+[*.py]
+indent_style = space
+
+[{Makefile,*.mk,custom_phrase.txt}]
+indent_style = tab
+
+[*.{yml,yaml}]
+indent_size = 2
+indent_style = space
