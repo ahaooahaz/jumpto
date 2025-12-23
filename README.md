@@ -6,28 +6,27 @@ jump to remote machine by ssh and sshpass, suitable for scenarios where multiple
 
 ## Install
 
-1. `wget https://raw.githubusercontent.com/ahaooahaz/JumpTo/main/jt.sh -O jt`
-2. `chmod +x jt`
-3. add `jt` into `${PATH}`
+For Linux (example):
+
+```
+# Set your platform variables (adjust as needed)
+VERSION=v0.1.0
+PLATFORM=linux-amd64
+
+# Download plain binary
+wget https://github.com/ahaooahaz/jumpto/releases/download/${VERSION}/yq-${PLATFORM} -O jt &&\
+    chmod +x jt
+```
+
+Latest version (Linux AMD64):
+
+```
+wget https://github.com/ahaooahaz/jumpto/releases/latest/download/jt-linux-amd64 -O jt &&\
+    chmod +x jt
+```
 
 ## Usage
 
 ![example](/example.gif)
-
-### Register
-
-`jt -r` or `jt --register` to register remote matchine information to `${HOME}/.config/jt/jt.csv`.
-
-### Login
-
-`jt ${ip}` to jump to remote machine, you can use part of the ip address.
-
-### List
-
-`jt -l` or `jt --list` to list all saved information.
-
-## 2FA
-
-2FA reqire to `pyotp`, use `pip install pyotp` to install.
 
 ### [MIT LICENSE](LICENSE)
