@@ -9,6 +9,7 @@ import (
 	"github.com/ahaooahaz/jumpto/cmd/jt/version"
 	"github.com/ahaooahaz/jumpto/internal/args"
 	"github.com/ahaooahaz/jumpto/internal/run"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -33,6 +34,9 @@ var rootCmd = &cobra.Command{
 		host := args[len(args)-1]
 		gArgs.Target = host
 		err = run.RootRun(cmd.Context(), gArgs)
+		if err != nil {
+			logrus.Fatal(err.Error())
+		}
 		return
 	},
 }

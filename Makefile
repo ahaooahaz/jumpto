@@ -30,10 +30,11 @@ ALL_TARGETS := $(foreach t,$(TARGETS),$(foreach p,$(SUPPORT_PLATFORMS),$(foreach
 
 COMMIT_ID ?= $(shell git rev-parse --short HEAD)
 BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
+VERSION ?= $(shell git describe --tags --always --dirty)
 
 GO = go
-VERSION ?= 0.0.1
 
+LDFLAGS += -s -w
 LDFLAGS += -X "$(REPO)/version.BuildTS=$(BUILT_TS)"
 LDFLAGS += -X "$(REPO)/version.GitHash=$(COMMIT_ID)"
 LDFLAGS += -X "$(REPO)/version.Version=$(VERSION)"
@@ -46,7 +47,7 @@ $(TARGETS)-%: $(GO_SRCS) $(VENDOR_LIST)
 	platform=$(word 2,$(subst -, ,$@)); \
 	arch=$(word 3,$(subst -, ,$@)); \
 	echo "building $@ for $$platform/$$arch"; \
-	${CGO_BUILD_OP} GOOS=$$platform GOARCH=$$arch $(GO) build -ldflags '${LDFLAGS} -X "$(REPO)/version.App=$@"' -tags='$(TAGS)' -o $@$(BINARY_SUFFIX) $(REPO)/cmd/$${name}/
+	${CGO_BUILD_OP} GOOS=$$platform GOARCH=$$arch $(GO) build -ldflags '$(LDFLAGS)' -tags='$(TAGS)' -o $@$(BINARY_SUFFIX) $(REPO)/cmd/$${name}/
 
 test:
 	go test ./... -coverprofile=${COVERAGE_REPORT} -covermode=atomic -tags='$(TAGS)'

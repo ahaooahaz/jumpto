@@ -41,6 +41,14 @@ func CreateRecord(record Record) (err error) {
 	return saveRecords(RecordJSONFilepath, &_records)
 }
 
+func RemoveRecord(index int) (err error) {
+	if index < 0 || index >= len(_records) {
+		return fmt.Errorf("index out of range")
+	}
+	_records = append(_records[:index], _records[index+1:]...)
+	return saveRecords(RecordJSONFilepath, &_records)
+}
+
 func GetRecordByUHP(username, host string, port uint16) (record *Record, err error) {
 	records, err := GetRecords()
 	if err != nil {
