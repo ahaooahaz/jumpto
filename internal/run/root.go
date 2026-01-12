@@ -60,6 +60,9 @@ func RootRun(ctx context.Context, gArgs args.RootArgs) (err error) {
 
 		if len(matchedRecords) == 1 {
 			r = &matchedRecords[0]
+		} else if len(matchedRecords) == 0 {
+			logrus.Error("no records")
+			return
 		} else {
 			showRecords(ctx, matchedRecords)
 			var index int

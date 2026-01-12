@@ -35,7 +35,7 @@ func RemoveRun(ctx context.Context, gArgs args.RemoveArgs) (err error) {
 			continue
 		}
 
-		err = record.RemoveRecord(index)
+		err = record.RemoveRecord(records[index].ID)
 		if err != nil {
 			logrus.Error(err.Error())
 			continue

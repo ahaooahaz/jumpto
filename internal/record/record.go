@@ -2,77 +2,105 @@ package record
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
+
+	"github.com/go-gormigrate/gormigrate/v2"
+	"github.com/sirupsen/logrus"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 type Records []Record
 
-var RecordJSONFilepath = os.Getenv("HOME") + "/.config/jt/records.json"
+var recordPath = os.Getenv("HOME") + "/.config/jt/records.db"
 var once sync.Once
 var _records Records
+var _db *gorm.DB
 
 type Record struct {
-	Username string `json:"username"`
-	Host     string `json:"host"`
-	Password string `json:"password"`
-	Port     uint16 `json:"port"`
+	gorm.Model
+	Username    string `json:"username" gorm:"type:text;not null"`
+	Host        string `json:"host" gorm:"type:text;not null"`
+	Password    string `json:"password" gorm:"type:text;not null"`
+	Port        uint16 `json:"port" gorm:"not null"`
+	ActiveTimes uint64 `json:"connect_count" gorm:"not null;default:0"`
+}
+
+func instance() *gorm.DB {
+	once.Do(func() {
+		var err error
+		_db, err = gorm.Open(sqlite.Open(recordPath), &gorm.Config{})
+		if err != nil {
+			logrus.Fatal(err.Error())
+		}
+
+		migrate := gormigrate.New(_db, gormigrate.DefaultOptions, []*gormigrate.Migration{
+			{
+				ID: "202601121703",
+				Migrate: func(tx *gorm.DB) error {
+					var ine error
+					ine = tx.AutoMigrate(&Record{})
+					if ine != nil {
+						logrus.Fatal(ine.Error())
+					}
+
+					oldRecordFile := filepath.Dir(recordPath) + "/records.json"
+					var stat os.FileInfo
+					stat, ine = os.Stat(oldRecordFile)
+					if ine == nil {
+						if !stat.IsDir() {
+							var raw []byte
+							raw, ine = os.ReadFile(oldRecordFile)
+							if ine != nil {
+								logrus.Fatal(ine.Error())
+							}
+							var records Records
+							ine = json.Unmarshal(raw, &records)
+							if ine != nil {
+								logrus.Fatal(ine.Error())
+							}
+							for _, r := range records {
+								err = tx.Create(&r).Error
+								if err != nil {
+									logrus.Fatal(err.Error())
+								}
+							}
+						}
+					}
+					return nil
+				},
+				Rollback: func(tx *gorm.DB) error {
+					return tx.Migrator().DropTable("records")
+				},
+			},
+		})
+
+		err = migrate.Migrate()
+		if err != nil {
+			logrus.Fatal(err.Error())
+		}
+	})
+	return _db
 }
 
 func GetRecords() (records Records, err error) {
-	once.Do(func() {
-		raw, ine := os.ReadFile(RecordJSONFilepath)
-		if ine != nil {
-			err = ine
-			return
-		}
-		err = json.Unmarshal(raw, &_records)
-		if err != nil {
-			return
-		}
-	})
-	records = _records
+	err = instance().Find(&records).Error
 	return
 }
 
 func CreateRecord(record Record) (err error) {
-	_records = append(_records, record)
-	return saveRecords(RecordJSONFilepath, &_records)
+	err = instance().Create(&record).Error
+	return
 }
 
-func RemoveRecord(index int) (err error) {
-	if index < 0 || index >= len(_records) {
-		return fmt.Errorf("index out of range")
-	}
-	_records = append(_records[:index], _records[index+1:]...)
-	return saveRecords(RecordJSONFilepath, &_records)
+func RemoveRecord(ID uint) (err error) {
+	err = instance().Unscoped().Delete(&Record{}, ID).Error
+	return
 }
 
 func GetRecordByUHP(username, host string, port uint16) (record *Record, err error) {
-	records, err := GetRecords()
-	if err != nil {
-		return
-	}
-	for _, r := range records {
-		if r.Username == username && r.Host == host && r.Port == port {
-			return &r, nil
-		}
-	}
-	return nil, fmt.Errorf("not found")
-}
-
-func saveRecords(path string, records *Records) error {
-	tmp := path + ".tmp"
-
-	data, err := json.MarshalIndent(records, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	if err := os.WriteFile(tmp, data, 0600); err != nil {
-		return err
-	}
-
-	return os.Rename(tmp, path)
+	err = instance().Where("username = ? AND host = ? AND port = ?", username, host, port).First(&record).Error
+	return
 }
