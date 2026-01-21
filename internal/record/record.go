@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type Records []Record
@@ -31,7 +32,9 @@ type Record struct {
 func instance() *gorm.DB {
 	once.Do(func() {
 		var err error
-		_db, err = gorm.Open(sqlite.Open(recordPath), &gorm.Config{})
+		_db, err = gorm.Open(sqlite.Open(recordPath), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Silent),
+		})
 		if err != nil {
 			logrus.Fatal(err.Error())
 		}

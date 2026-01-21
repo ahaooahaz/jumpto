@@ -3,7 +3,6 @@ package exec
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 
@@ -25,9 +24,5 @@ func Connect(ctx context.Context, record record.Record) (err error) {
 		fmt.Sprintf("%s@%s", record.Username, record.Host),
 	}
 
-	err = unix.Exec(sshpassPath, args, os.Environ())
-	if err != nil {
-		log.Fatalf("exec ssh failed: %v", err)
-	}
-	return
+	return unix.Exec(sshpassPath, args, os.Environ())
 }
