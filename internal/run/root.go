@@ -36,6 +36,10 @@ func RootRun(ctx context.Context, gArgs args.RootArgs) (err error) {
 			}
 
 			r.Password = string(passwordBytes)
+			err = exec.TryConnect(ctx, *r)
+			if err != nil {
+				return
+			}
 			err = record.CreateRecord(*r)
 			if err != nil {
 				return
