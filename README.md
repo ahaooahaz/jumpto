@@ -14,7 +14,7 @@ VERSION=v0.1.0
 PLATFORM=linux-amd64
 
 # Download plain binary
-wget https://github.com/ahaooahaz/jumpto/releases/download/${VERSION}/yq-${PLATFORM} -O jt &&\
+wget https://github.com/ahaooahaz/jumpto/releases/download/${VERSION}/jt-${PLATFORM} -O jt &&\
     chmod +x jt
 ```
 
